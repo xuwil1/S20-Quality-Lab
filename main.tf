@@ -5,9 +5,7 @@ provider "aws" {
 resource "aws_s3_bucket" "vulnerable_vault" {
   bucket = "tkh-exposed-vault-${random_id.id.hex}"
 }  
-resource "aws_s3_bucket" "vulnerable_vault" {  
-  bucket = "tkh-exposed-vault-${random_id.id.hex}"   
-}  
+
 resource "aws_s3_bucket_public_access_block" "example" {
   bucket                  = aws_s3_bucket.vulnerable_vault.id
   block_public_acls       = true
