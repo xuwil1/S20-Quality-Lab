@@ -1,9 +1,12 @@
 provider "aws" {
   region = "us-east-1"
 }
+
+# --- Log Bucket (Secured) ---
 resource "aws_s3_bucket" "log_bucket" {
   bucket = "tkh-logs-${random_id.id.hex}"
 }
+
 resource "aws_s3_bucket_ownership_controls" "log_ownership" {
   bucket = aws_s3_bucket.log_bucket.id
   rule {
@@ -11,15 +14,43 @@ resource "aws_s3_bucket_ownership_controls" "log_ownership" {
   }
 }
 
+resource "aws_s3_bucket_public_access_block" "log_block" {
+  bucket                  = aws_s3_bucket.log_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "log_encryption" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "log_versioning" {
+  bucket = aws_s3_bucket.log_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# --- Main Vulnerable Vault Bucket (Secured) ---
 resource "aws_s3_bucket" "vulnerable_vault" {
   bucket = "tkh-exposed-vault-${random_id.id.hex}"
 }
+
 resource "aws_s3_bucket_ownership_controls" "example" {
   bucket = aws_s3_bucket.vulnerable_vault.id
   rule {
     object_ownership = "BucketOwnerEnforced"
   }
 }
+
 resource "aws_s3_bucket_public_access_block" "example" {
   bucket                  = aws_s3_bucket.vulnerable_vault.id
   block_public_acls       = true
@@ -37,12 +68,20 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
     }
   }
 }
+
 resource "aws_s3_bucket_versioning" "versioning" {
   bucket = aws_s3_bucket.vulnerable_vault.id
   versioning_configuration {
     status = "Enabled"
   }
 }
+
+resource "aws_s3_bucket_logging" "example" {
+  bucket        = aws_s3_bucket.vulnerable_vault.id
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = "log/"
+}
+
 resource "random_id" "id" {
   byte_length = 4
 }
